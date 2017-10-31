@@ -255,7 +255,8 @@ class Jenkins(object):
     _timeout_warning_issued = False
 
     def __init__(self, url, username=None, password=None,
-                 timeout=socket._GLOBAL_DEFAULT_TIMEOUT):
+                 timeout=socket._GLOBAL_DEFAULT_TIMEOUT,
+                 cookies=None):
         '''Create handle to Jenkins instance.
 
         All methods will raise :class:`JenkinsException` on failure.
@@ -275,6 +276,7 @@ class Jenkins(object):
             self.auth = None
         self.crumb = None
         self.timeout = timeout
+        self.cookies = cookies
 
     def _get_encoded_params(self, params):
         for k, v in params.items():
@@ -307,6 +309,11 @@ class Jenkins(object):
                 self.crumb = json.loads(response)
         if self.crumb:
             req.add_header(self.crumb['crumbRequestField'], self.crumb['crumb'])
+
+    def add_cookies(self, req):
+        if self.cookies is not None:
+            req.add_header('Cookie', self.cookies)
+        return req
 
     def _add_missing_builds(self, data):
         """Query Jenkins to get all builds of a job.
@@ -428,6 +435,8 @@ class Jenkins(object):
                 req.add_header('Authorization', self.auth)
             if add_crumb:
                 self.maybe_add_crumb(req)
+            if self.cookies is not None:
+                self.add_cookies(req)
             response = urlopen(req, timeout=self.timeout).read()
             if response is None:
                 raise EmptyResponseException(
